@@ -1,0 +1,111 @@
+---
+title: "Machine Learning Assignment"
+author: "Course Era"
+date: "June 24, 2017"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+## Background ##
+
+### Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. ###
+
+### More information is available from the website here: http://groupware.les.inf.puc-rio.br/har) ###
+
+```{r}
+setwd("C:/Users/Vikrant/Desktop/CourseEra/ASSIGNMENTS/Machine Learning Week 4 Assignment")
+library(caret)
+library(randomForest)
+library(ggplot2)
+library(rpart)
+library(rpart.plot)
+```
+### Setting the overall seed for reproduceability ###
+```{r}
+set.seed(1234)
+```
+### Read in training and testing data ###
+```{r}
+train <- read.csv("pml-training.csv", na.strings=c("NA","#DIV/0!",""))
+test <- read.csv("pml-testing.csv", na.strings=c("NA","#DIV/0!",""))
+```
+### Check dimensions for number of variables and number of observations ###
+```{r}
+dim(train)
+dim(test)
+```
+### Remove data irrelevant to the current project ###
+```{r}
+train <- train[,-c(1:7)]
+test <- test[,-c(1:7)]
+train<-train[,colSums(is.na(train)) == 0]
+test <-test[,colSums(is.na(test)) == 0]
+
+summary(train$classe)
+
+inTrain <- createDataPartition(y=train$classe, p=0.6, list=FALSE)
+Train1 <- train[inTrain, ]
+Test1 <- train[-inTrain, ]
+dim(Train1)
+
+
+plot(Train1$classe, col="green", main="Levels of the variable classe within the Training data set", xlab="classe levels", ylab="Frequency")
+```
+## First prediction model: Using Decision Tree ##
+```{r}
+model1 <- rpart(classe ~ ., data=Train1, method="class")
+```
+### Predicting: ###
+```{r}
+prediction1 <- predict(model1, Test1, type = "class")
+```
+### Plot of the Decision Tree ###
+```{r}
+rpart.plot(model1, main="Classification Tree", extra=102, under=TRUE, faclen=0)
+```
+
+### Test results on Testing data set: ###
+```{r}
+confusionMatrix(prediction1, Test1$classe)
+```
+
+## Second prediction model: Using Random Forest ##
+```{r}
+model2 <- randomForest(classe ~. , data=Train1, method="class")
+```
+### Predicting: ###
+```{r}
+prediction2 <- predict(model2, Test1, type = "class")
+```
+### Test results on subTesting data set: ###
+```{r}
+confusionMatrix(prediction2, Test1$classe)
+```
+### in sample error ###
+```{r}
+predict_train <- predict(model2, Train1, type = "class")
+confusionMatrix(Train1$classe, predict_train)
+```
+# Conclusion #
+
+### Random Forest algorithm performed better than Decision Trees.Accuracy for Random Forest model was .992 CI: (0.990, 0.994)) compared to 0.739 (95% CI: (0.729, 0.748)) for Decision Tree model. The expected out of sample error is estimated at 0.008, or 0.8%. ###
+
+# Submission #
+### predict outcome levels on the original Testing data set using Random Forest ###
+```{r}
+predictfinal <- predict(model2, test, type="class")
+predictfinal
+```
+### Write files for submission ###
+```{r}
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+
+pml_write_files(predictfinal)
+```
